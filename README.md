@@ -148,3 +148,27 @@ node test-suite.js
 - **Phone**: 063693 13196
 - **Rating**: 4.7 Stars (28 Verified Google Reviews)
 - **UPI Receiver Handle**: `zancafe@upi`
+
+---
+
+## 🌐 GitHub Pages Live Demo & Deployment
+
+The static presentation layer and interactive ordering simulator are published to **GitHub Pages** directly from the `gh-pages` branch.
+
+- **GitHub Repository**: [https://github.com/risa113/zan-cafe](https://github.com/risa113/zan-cafe)
+- **Live GitHub Pages URL**: [https://risa113.github.io/zan-cafe/](https://risa113.github.io/zan-cafe/)
+
+### How to Configure GitHub Pages on the Repository:
+1. Go to your GitHub repository: [https://github.com/risa113/zan-cafe/settings/pages](https://github.com/risa113/zan-cafe/settings/pages)
+2. Under **Build and deployment** -> **Source**:
+   - Select **Deploy from a branch**
+   - Branch: **`gh-pages`** / Folder: **`/ (root)`**
+   - Click **Save**
+   *(Alternatively, choose **GitHub Actions** to use `.github/workflows/deploy.yml`)*
+3. Your site will be served live at `https://risa113.github.io/zan-cafe/`.
+
+### Re-deploying Static Updates:
+```bash
+npm run deploy:gh-pages
+```
+This single command automatically parks backend API routes, generates static HTML for all 31 routes under `/zan-cafe/` basePath, places `.nojekyll` and `404.html`, restores all backend files, and pushes directly to `origin/gh-pages`.
