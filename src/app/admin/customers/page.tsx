@@ -14,7 +14,7 @@ import {
   FileSpreadsheet,
   ArrowRight,
 } from "lucide-react";
-import * as XLSX from "xlsx";
+import { exportToCSV } from "@/lib/export-csv";
 
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -48,7 +48,7 @@ export default function AdminCustomersPage() {
     fetchCustomers();
   }, [search, dateRange]);
 
-  // Export to Excel / CSV using xlsx
+  // Export to Excel / CSV safely
   const handleExport = (format: "csv" | "xlsx") => {
     const exportData = customers.map((c) => ({
       "Customer ID": c.id,
@@ -62,15 +62,7 @@ export default function AdminCustomersPage() {
       "Last Visit": new Date(c.lastVisitAt).toLocaleDateString("en-IN"),
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Zan Cafe Customers");
-
-    if (format === "csv") {
-      XLSX.writeFile(workbook, `zan_cafe_customers_${Date.now()}.csv`);
-    } else {
-      XLSX.writeFile(workbook, `zan_cafe_customers_${Date.now()}.xlsx`);
-    }
+    exportToCSV(`zan_cafe_customers_${Date.now()}.csv`, exportData);
   };
 
   return (

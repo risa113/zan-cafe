@@ -1,26 +1,48 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { signCustomerToken, CUSTOMER_COOKIE_NAME } from "@/lib/auth";
+import { sanitizeText } from "@/lib/sanitize";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const orderInputSchema = z.object({
-  tableNumber: z.string().min(1, "Table number is required"),
-  customerName: z.string().min(2, "Name is required"),
-  customerPhone: z.string().min(10, "Valid phone number is required"),
-  customerEmail: z.string().email().optional().or(z.literal("")),
-  customerNotes: z.string().optional(),
+  tableNumber: z.string().min(1, "Table number is required").max(30),
+  customerName: z.string().min(2, "Name is required").max(80),
+  customerPhone: z.string().min(10, "Valid phone number is required").max(20),
+  customerEmail: z.string().email().max(100).optional().or(z.literal("")),
+  customerNotes: z.string().max(500).optional(),
   items: z
     .array(
       z.object({
-        foodItemId: z.string().min(1),
-        quantity: z.number().int().min(1),
-        notes: z.string().optional(),
+        foodItemId: z.string().min(1).max(50),
+        quantity: z.number().int().min(1).max(99),
+        notes: z.string().max(250).optional(),
       })
     )
-    .min(1, "At least one item is required in the cart"),
+    .min(1, "At least one item is required in the cart")
+    .max(50, "Order cannot exceed 50 distinct items"),
 });
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+
+    // Rate Limiting: 10 orders per 10 minutes per IP
+    const limiter = rateLimit(`order_post:${ip}`, {
+      windowMs: 10 * 60 * 1000,
+      max: 10,
+    });
+
+    if (!limiter.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Order rate limit reached. Please wait a few minutes before submitting another order.",
+        },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const parsed = orderInputSchema.safeParse(body);
 
@@ -35,6 +57,9 @@ export async function POST(request: Request) {
       parsed.data;
 
     const cleanPhone = customerPhone.replace(/[^0-9]/g, "").slice(-10);
+    const sanitizedCustomerName = sanitizeText(customerName, 80);
+    const sanitizedEmail = customerEmail ? sanitizeText(customerEmail.toLowerCase(), 100) : null;
+    const sanitizedCustomerNotes = customerNotes ? sanitizeText(customerNotes, 500) : null;
 
     // 1. Verify or create Customer
     let customer = await prisma.customer.findUnique({
@@ -44,9 +69,9 @@ export async function POST(request: Request) {
     if (!customer) {
       customer = await prisma.customer.create({
         data: {
-          name: customerName.trim(),
+          name: sanitizedCustomerName,
           phone: cleanPhone,
-          email: customerEmail?.trim() || null,
+          email: sanitizedEmail,
           totalVisits: 1,
           totalSpend: 0,
         },
@@ -55,8 +80,8 @@ export async function POST(request: Request) {
       customer = await prisma.customer.update({
         where: { id: customer.id },
         data: {
-          name: customerName.trim(),
-          email: customerEmail?.trim() || customer.email,
+          name: sanitizedCustomerName,
+          email: sanitizedEmail || customer.email,
           lastVisitAt: new Date(),
           totalVisits: { increment: 1 },
         },
@@ -122,7 +147,7 @@ export async function POST(request: Request) {
         price: actualPrice,
         quantity: cartItem.quantity,
         total: lineTotal,
-        notes: cartItem.notes || null,
+        notes: cartItem.notes ? sanitizeText(cartItem.notes, 250) : null,
       };
     });
 
@@ -161,7 +186,7 @@ export async function POST(request: Request) {
           taxAmount,
           discountAmount: 0,
           grandTotal,
-          customerNotes: customerNotes?.trim() || null,
+          customerNotes: sanitizedCustomerNotes,
           items: {
             create: validatedOrderItems,
           },
@@ -214,7 +239,14 @@ export async function POST(request: Request) {
       return order;
     });
 
-    return NextResponse.json({
+    // Sign customer session cookie so customer can track their own order securely
+    const customerToken = signCustomerToken({
+      customerId: customer.id,
+      phone: customer.phone,
+      name: customer.name,
+    });
+
+    const response = NextResponse.json({
       success: true,
       order: {
         id: newOrder.id,
@@ -235,6 +267,18 @@ export async function POST(request: Request) {
         qrImageUrl: settings?.upiQrImageUrl || null,
       },
     });
+
+    response.cookies.set({
+      name: CUSTOMER_COOKIE_NAME,
+      value: customerToken,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60,
+    });
+
+    return response;
   } catch (error) {
     console.error("Order creation error:", error);
     return NextResponse.json(

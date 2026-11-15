@@ -23,7 +23,7 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import * as XLSX from "xlsx";
+import { exportToCSV } from "@/lib/export-csv";
 
 export default function AdminReportsPage() {
   const [range, setRange] = useState("30days");
@@ -59,15 +59,7 @@ export default function AdminReportsPage() {
       "Total Revenue (₹)": item.revenue,
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(reportRows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Analytics");
-
-    if (format === "csv") {
-      XLSX.writeFile(workbook, `zan_cafe_sales_report_${range}.csv`);
-    } else {
-      XLSX.writeFile(workbook, `zan_cafe_sales_report_${range}.xlsx`);
-    }
+    exportToCSV(`zan_cafe_sales_report_${range}.csv`, reportRows);
   };
 
   const summary = data?.summary || {

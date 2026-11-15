@@ -6,6 +6,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const items = await prisma.websiteContent.findMany({
       orderBy: [{ section: "asc" }, { key: "asc" }],
     });

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
+import { maskPhone, maskEmail } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
 
@@ -37,13 +39,29 @@ export async function GET(
       );
     }
 
+    const staffSession = await getSession();
+    const isStaff = staffSession && ["OWNER", "ADMIN", "BILLING_STAFF", "KITCHEN_STAFF"].includes(staffSession.role);
+
+    // If not staff, mask customer PII to prevent data harvesting
+    const sanitizedCustomer = order.customer
+      ? {
+          id: order.customer.id,
+          name: order.customer.name,
+          phone: isStaff ? order.customer.phone : maskPhone(order.customer.phone),
+          email: isStaff ? order.customer.email : maskEmail(order.customer.email),
+        }
+      : null;
+
     const settings = await prisma.restaurantSettings.findUnique({
       where: { id: "default" },
     });
 
     return NextResponse.json({
       success: true,
-      order,
+      order: {
+        ...order,
+        customer: sanitizedCustomer,
+      },
       settings: {
         restaurantName: settings?.restaurantName || "Zan Cafe",
         phone: settings?.phone || "063693 13196",
@@ -59,4 +77,3 @@ export async function GET(
     );
   }
 }
-
