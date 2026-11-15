@@ -20,31 +20,48 @@ import {
   QrCode,
 } from "lucide-react";
 
-export const dynamic = "force-dynamic";
-
 export default async function HomePage() {
-  // Fetch real data from database
-  const categories = await prisma.foodCategory.findMany({
-    where: { isActive: true },
-    orderBy: { displayOrder: "asc" },
-  });
+  // Fetch real data from database with fallback for static export / offline build
+  let categories: any[] = [];
+  let featuredItems: any[] = [];
+  let cms: Record<string, string> = {};
+  let settings: any = null;
 
-  const featuredItems = await prisma.foodItem.findMany({
-    where: { isFeatured: true, isAvailable: true },
-    take: 6,
-    include: { category: true },
-    orderBy: { displayOrder: "asc" },
-  });
+  try {
+    categories = await prisma.foodCategory.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: "asc" },
+    });
 
-  const cmsRecords = await prisma.websiteContent.findMany();
-  const cms: Record<string, string> = cmsRecords.reduce((acc, curr) => {
-    acc[curr.key] = curr.value;
-    return acc;
-  }, {} as Record<string, string>);
+    featuredItems = await prisma.foodItem.findMany({
+      where: { isFeatured: true, isAvailable: true },
+      take: 6,
+      include: { category: true },
+      orderBy: { displayOrder: "asc" },
+    });
 
-  const settings = await prisma.restaurantSettings.findUnique({
-    where: { id: "default" },
-  });
+    const cmsRecords = await prisma.websiteContent.findMany();
+    cms = cmsRecords.reduce((acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {} as Record<string, string>);
+
+    settings = await prisma.restaurantSettings.findUnique({
+      where: { id: "default" },
+    });
+  } catch (err) {
+    console.warn("Using static fallback data for HomePage:", err);
+  }
+
+  // Fallbacks if database is empty or not seeded
+  if (categories.length === 0) {
+    const { INITIAL_CATEGORIES } = await import("@/lib/initial-data");
+    categories = INITIAL_CATEGORIES;
+  }
+  if (featuredItems.length === 0) {
+    const { INITIAL_FOOD_ITEMS } = await import("@/lib/initial-data");
+    featuredItems = INITIAL_FOOD_ITEMS.filter((i) => i.isFeatured);
+  }
 
   return (
     <div className="min-h-screen bg-espresso text-ivory flex flex-col">

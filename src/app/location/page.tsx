@@ -12,12 +12,15 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
-
 export default async function LocationPage() {
-  const settings = await prisma.restaurantSettings.findUnique({
-    where: { id: "default" },
-  });
+  let settings: any = null;
+  try {
+    settings = await prisma.restaurantSettings.findUnique({
+      where: { id: "default" },
+    });
+  } catch (err) {
+    console.warn("Using default settings for LocationPage:", err);
+  }
 
   return (
     <div className="min-h-screen bg-espresso text-ivory flex flex-col">

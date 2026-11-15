@@ -16,14 +16,17 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
-
 export default async function AboutPage() {
-  const cmsRecords = await prisma.websiteContent.findMany();
-  const cms: Record<string, string> = cmsRecords.reduce((acc, curr) => {
-    acc[curr.key] = curr.value;
-    return acc;
-  }, {} as Record<string, string>);
+  let cms: Record<string, string> = {};
+  try {
+    const cmsRecords = await prisma.websiteContent.findMany();
+    cms = cmsRecords.reduce((acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {} as Record<string, string>);
+  } catch (err) {
+    console.warn("Using fallback content for AboutPage:", err);
+  }
 
   return (
     <div className="min-h-screen bg-espresso text-ivory flex flex-col">

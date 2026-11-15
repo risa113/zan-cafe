@@ -9,6 +9,7 @@ import AddToCartButton from "@/components/AddToCartButton";
 import CustomerRegistrationModal from "@/components/CustomerRegistrationModal";
 import { useCart } from "@/lib/cart-context";
 import { FoodCategoryData, FoodItemData } from "@/lib/types";
+import { INITIAL_CATEGORIES, INITIAL_FOOD_ITEMS } from "@/lib/initial-data";
 import {
   Search,
   MapPin,
@@ -63,19 +64,25 @@ function MenuContent() {
     }
   }, [urlCategory]);
 
-  // Fetch Menu from API
+  // Fetch Menu from API with graceful static fallback
   useEffect(() => {
     async function loadMenu() {
       try {
         setLoading(true);
         const res = await fetch("/api/menu");
-        const data = await res.json();
-        if (data.success) {
-          setCategories(data.categories);
-          setAllItems(data.allItems);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.categories?.length > 0) {
+            setCategories(data.categories);
+            setAllItems(data.allItems);
+            return;
+          }
         }
-      } catch (err) {
-        console.error("Failed to load menu", err);
+        throw new Error("API not available");
+      } catch {
+        // Fallback to pre-seeded static data for GitHub Pages!
+        setCategories(INITIAL_CATEGORIES);
+        setAllItems(INITIAL_FOOD_ITEMS);
       } finally {
         setLoading(false);
       }
