@@ -16,6 +16,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+import { DEMO_STAFF_USERS } from "@/lib/initial-data";
+
 export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -28,30 +30,65 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError(null);
 
+    const cleanEmail = email.toLowerCase().trim();
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: cleanEmail, password }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setError(data.error || "Authentication failed.");
-        setLoading(false);
+      // If server returned a valid JSON response
+      if (res.headers.get("content-type")?.includes("application/json")) {
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setError(data.error || "Invalid email or password.");
+          setLoading(false);
+          return;
+        }
+
+        // Store staff session for client components
+        localStorage.setItem("zan_staff_user", JSON.stringify(data.user));
+
+        if (data.user.role === "KITCHEN_STAFF") {
+          router.push("/admin/kitchen");
+        } else if (data.user.role === "BILLING_STAFF") {
+          router.push("/admin/billing");
+        } else {
+          router.push("/admin");
+        }
+        return;
+      }
+      throw new Error("No JSON response from backend");
+    } catch {
+      // Static Environment Fallback (GitHub Pages mode without active Node.js server)
+      const matchedUser = DEMO_STAFF_USERS.find(
+        (u) => u.email === cleanEmail && u.password === password
+      );
+
+      if (matchedUser) {
+        const userObj = {
+          id: matchedUser.id,
+          name: matchedUser.name,
+          email: matchedUser.email,
+          role: matchedUser.role,
+        };
+        localStorage.setItem("zan_staff_user", JSON.stringify(userObj));
+        // Cookie for middleware/client compatibility
+        document.cookie = `zan_staff_token=demo_${matchedUser.role}; path=/; max-age=604800; SameSite=Lax`;
+
+        if (matchedUser.role === "KITCHEN_STAFF") {
+          router.push("/admin/kitchen");
+        } else if (matchedUser.role === "BILLING_STAFF") {
+          router.push("/admin/billing");
+        } else {
+          router.push("/admin");
+        }
         return;
       }
 
-      // Route based on role
-      if (data.user.role === "KITCHEN_STAFF") {
-        router.push("/admin/kitchen");
-      } else if (data.user.role === "BILLING_STAFF") {
-        router.push("/admin/billing");
-      } else {
-        router.push("/admin");
-      }
-    } catch {
-      setError("Network error while signing in.");
+      setError("Invalid email or password. Please use the demo credentials below.");
       setLoading(false);
     }
   };

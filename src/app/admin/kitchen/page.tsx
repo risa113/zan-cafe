@@ -11,6 +11,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { playOrderChime } from "@/lib/sound";
+import { DEMO_ORDERS } from "@/lib/initial-data";
 
 export default function KitchenDisplayPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -20,16 +21,24 @@ export default function KitchenDisplayPage() {
     if (!silent) setLoading(true);
     try {
       const res = await fetch("/api/admin/orders");
-      const data = await res.json();
-      if (data.success) {
-        // Filter only active kitchen orders
-        const active = (data.orders || []).filter((o: any) =>
-          ["ORDER_ACCEPTED", "PREPARING", "NEW_ORDER"].includes(o.status)
-        );
-        setOrders(active);
+      if (res.headers.get("content-type")?.includes("application/json")) {
+        const data = await res.json();
+        if (data.success) {
+          // Filter only active kitchen orders
+          const active = (data.orders || []).filter((o: any) =>
+            ["ORDER_ACCEPTED", "PREPARING", "NEW_ORDER"].includes(o.status)
+          );
+          setOrders(active);
+          return;
+        }
       }
-    } catch (err) {
-      console.error(err);
+      throw new Error("Static fallback");
+    } catch {
+      // Static fallback for GitHub Pages
+      const active = DEMO_ORDERS.filter((o: any) =>
+        ["ORDER_ACCEPTED", "PREPARING", "NEW_ORDER"].includes(o.status)
+      );
+      setOrders(active);
     } finally {
       if (!silent) setLoading(false);
     }
@@ -49,7 +58,11 @@ export default function KitchenDisplayPage() {
         body: JSON.stringify({ status }),
       });
       fetchKitchenOrders(true);
-    } catch {}
+    } catch {
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status } : o))
+      );
+    }
   };
 
   return (

@@ -56,13 +56,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     async function checkAuth() {
       try {
         const res = await fetch("/api/auth/me");
-        const data = await res.json();
-        if (!res.ok || !data.authenticated) {
-          router.push("/admin/login");
-          return;
+        if (res.headers.get("content-type")?.includes("application/json")) {
+          const data = await res.json();
+          if (res.ok && data.authenticated) {
+            setUser(data.user);
+            localStorage.setItem("zan_staff_user", JSON.stringify(data.user));
+            return;
+          }
         }
-        setUser(data.user);
+        throw new Error("No backend auth session");
       } catch {
+        // Fallback for static GitHub Pages hosting
+        const stored = typeof window !== "undefined" ? localStorage.getItem("zan_staff_user") : null;
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed && parsed.email && parsed.role) {
+              setUser(parsed);
+              return;
+            }
+          } catch {}
+        }
         router.push("/admin/login");
       } finally {
         setLoading(false);
@@ -97,11 +111,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem("zan_staff_user");
+      document.cookie = "zan_staff_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/admin/login");
-    } catch {
-      router.push("/admin/login");
-    }
+    } catch {}
+    router.push("/admin/login");
   };
 
   if (pathname === "/admin/login") {

@@ -26,6 +26,8 @@ import {
   CartesianGrid,
 } from "recharts";
 
+import { DEMO_ANALYTICS, DEMO_ORDERS } from "@/lib/initial-data";
+
 export default function AdminOverviewPage() {
   const [analytics, setAnalytics] = useState<any>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
@@ -39,13 +41,22 @@ export default function AdminOverviewPage() {
         fetch("/api/admin/orders?limit=6"),
       ]);
 
-      const aData = await analyticsRes.json();
-      const oData = await ordersRes.json();
+      if (
+        analyticsRes.headers.get("content-type")?.includes("application/json") &&
+        ordersRes.headers.get("content-type")?.includes("application/json")
+      ) {
+        const aData = await analyticsRes.json();
+        const oData = await ordersRes.json();
 
-      if (aData.success) setAnalytics(aData);
-      if (oData.success) setRecentOrders(oData.orders || []);
-    } catch (err) {
-      console.error("Dashboard load error", err);
+        if (aData.success) setAnalytics(aData);
+        if (oData.success) setRecentOrders(oData.orders || []);
+        return;
+      }
+      throw new Error("Static fallback required");
+    } catch {
+      // Static Demo Fallback for GitHub Pages
+      setAnalytics(DEMO_ANALYTICS);
+      setRecentOrders(DEMO_ORDERS);
     } finally {
       setLoading(false);
     }

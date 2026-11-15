@@ -179,3 +179,121 @@ export const INITIAL_FOOD_ITEMS: FoodItemData[] = [
   },
 ];
 
+export const DEMO_STAFF_USERS = [
+  {
+    id: "usr-1",
+    name: "Mohammed Ziyad (Owner)",
+    email: "owner@zancafe.in",
+    password: "owner123",
+    role: "OWNER" as const,
+  },
+  {
+    id: "usr-2",
+    name: "Ayesha Sultana (Manager)",
+    email: "admin@zancafe.in",
+    password: "admin123",
+    role: "ADMIN" as const,
+  },
+  {
+    id: "usr-3",
+    name: "Chef Tariq Anwar",
+    email: "kitchen@zancafe.in",
+    password: "kitchen123",
+    role: "KITCHEN_STAFF" as const,
+  },
+  {
+    id: "usr-4",
+    name: "Khadija Begum (Cashier)",
+    email: "billing@zancafe.in",
+    password: "billing123",
+    role: "BILLING_STAFF" as const,
+  },
+];
+
+export const DEMO_ANALYTICS = {
+  summary: {
+    totalRevenue: 28450,
+    todayRevenue: 4920,
+    weeklyRevenue: 28450,
+    monthlyRevenue: 128900,
+    totalOrdersCount: 42,
+    todayOrdersCount: 8,
+    totalCustomersCount: 36,
+    averageOrderValue: 677.38,
+    pendingPaymentsCount: 2,
+    activeKitchenOrdersCount: 3,
+  },
+  dailyTrend: [
+    { date: "Day 1", revenue: 3200, orders: 5 },
+    { date: "Day 2", revenue: 4100, orders: 6 },
+    { date: "Day 3", revenue: 3850, orders: 6 },
+    { date: "Day 4", revenue: 5200, orders: 8 },
+    { date: "Day 5", revenue: 4900, orders: 7 },
+    { date: "Day 6", revenue: 6100, orders: 9 },
+    { date: "Today", revenue: 4920, orders: 8 },
+  ],
+  bestSellers: [
+    { name: "Zan Royale Truffle Burger", quantity: 38, revenue: 10830 },
+    { name: "Melapalayam Peri-Peri Crispy Broast", quantity: 32, revenue: 9920 },
+    { name: "San Marzano Burrata Pizza", quantity: 24, revenue: 9480 },
+    { name: "Spanish Caramel Iced Latte", quantity: 45, revenue: 8550 },
+  ],
+};
+
+export const DEMO_ORDERS = [
+  {
+    id: "ord-demo-1",
+    orderNumber: "ZAN-20261115-001",
+    table: { tableNumber: "T-01", displayName: "Table 01 (Indoor Lounge)" },
+    customer: { name: "Bilal Ahmed", phone: "9842103456", email: "bilal@gmail.com" },
+    subtotal: 695,
+    taxAmount: 34.75,
+    grandTotal: 729.75,
+    status: "PAYMENT_PENDING",
+    paymentStatus: "VERIFICATION_PENDING",
+    paymentMethod: "UPI_QR",
+    paymentUtr: "UPI-982341203948",
+    createdAt: new Date().toISOString(),
+    items: [
+      { id: "oi-1", foodName: "Zan Royale Truffle Burger", quantity: 2, price: 285, total: 570 },
+      { id: "oi-2", foodName: "Spanish Caramel Iced Latte", quantity: 1, price: 190, total: 190 },
+    ],
+  },
+  {
+    id: "ord-demo-2",
+    orderNumber: "ZAN-20261115-002",
+    table: { tableNumber: "T-04", displayName: "Table 04 (Courtyard Garden)" },
+    customer: { name: "Sameera Banu", phone: "9842107788", email: "sameera@gmail.com" },
+    subtotal: 920,
+    taxAmount: 46.0,
+    grandTotal: 966.0,
+    status: "PREPARING",
+    paymentStatus: "PAID",
+    paymentMethod: "UPI_QR",
+    createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
+    items: [
+      { id: "oi-3", foodName: "San Marzano Burrata Pizza", quantity: 1, price: 395, total: 395 },
+      { id: "oi-4", foodName: "Melapalayam Peri-Peri Crispy Broast", quantity: 1, price: 310, total: 310 },
+      { id: "oi-5", foodName: "Belgian Lotus Biscoff Waffle", quantity: 1, price: 220, total: 220 },
+    ],
+  },
+  {
+    id: "ord-demo-3",
+    orderNumber: "ZAN-20261115-003",
+    table: { tableNumber: "T-07", displayName: "Table 07 (First Floor Terrace)" },
+    customer: { name: "Dr. Farooq Abdullah", phone: "9842101122", email: "farooq@gmail.com" },
+    subtotal: 475,
+    taxAmount: 23.75,
+    grandTotal: 498.75,
+    status: "ORDER_READY",
+    paymentStatus: "PAID",
+    paymentMethod: "UPI_QR",
+    createdAt: new Date(Date.now() - 35 * 60000).toISOString(),
+    items: [
+      { id: "oi-6", foodName: "Melapalayam Peri-Peri Crispy Broast", quantity: 1, price: 310, total: 310 },
+      { id: "oi-7", foodName: "Blue Ocean Curacao Sparkler", quantity: 1, price: 140, total: 140 },
+    ],
+  },
+];
+
+
