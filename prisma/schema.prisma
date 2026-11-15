@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String      @id @default(cuid())
+  name             String
+  email            String      @unique
+  passwordHash     String
+  role             String      @default("STAFF") // OWNER, ADMIN, KITCHEN_STAFF, BILLING_STAFF
+  phone            String?
+  isActive         Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  ordersVerified   Order[]     @relation("OrderVerifiedBy")
+  paymentsVerified Payment[]   @relation("PaymentVerifiedBy")
+  auditLogs        AuditLog[]
+}
+
+model Customer {
+  id          String          @id @default(cuid())
+  name        String
+  phone       String          @unique
+  email       String?
+  notes       String?
+  firstVisitAt DateTime       @default(now())
+  lastVisitAt  DateTime       @default(now())
+  totalVisits  Int            @default(1)
+  totalSpend   Float          @default(0.0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  orders      Order[]
+  visits      CustomerVisit[]
+}
+
+model RestaurantTable {
+  id           String          @id @default(cuid())
+  tableNumber  String          @unique // e.g. "T-01", "T-02"
+  displayName  String          // e.g. "Table 01 (Indoor Lounge)"
+  capacity     Int             @default(4)
+  locationDesc String?         // e.g. "Ground Floor Window"
+  status       String          @default("AVAILABLE") // AVAILABLE, OCCUPIED, RESERVED
+  qrCodeData   String?         // URL or encoded payload for this table
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  orders       Order[]
+  visits       CustomerVisit[]
+}
+
+model FoodCategory {
+  id           String       @id @default(cuid())
+  name         String
+  slug         String       @unique
+  description  String?
+  image        String?
+  displayOrder Int          @default(0)
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  foodItems    FoodItem[]
+}
+
+model FoodItem {
+  id                     String       @id @default(cuid())
+  categoryId             String
+  category               FoodCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name                   String
+  slug                   String       @unique
+  description            String
+  price                  Float
+  discountedPrice        Float?
+  image                  String
+  isAvailable            Boolean      @default(true)
+  isFeatured             Boolean      @default(false)
+  isPopular              Boolean      @default(false)
+  isVeg                  Boolean      @default(false)
+  spicyLevel             Int          @default(0) // 0: mild, 1: medium, 2: spicy, 3: extra spicy
+  preparationTimeMinutes Int          @default(15)
+  displayOrder           Int          @default(0)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  orderItems             OrderItem[]
+}
+
+model Order {
+  id              String          @id @default(cuid())
+  orderNumber     String          @unique // e.g. "ZAN-20261115-001"
+  customerId      String
+  customer        Customer        @relation(fields: [customerId], references: [id])
+  tableId         String
+  table           RestaurantTable @relation(fields: [tableId], references: [id])
+  status          String          @default("NEW_ORDER") 
+  // Status flow: NEW_ORDER -> PAYMENT_PENDING -> PAYMENT_VERIFIED -> ORDER_ACCEPTED -> PREPARING -> ORDER_READY -> COMPLETED (or CANCELLED)
+  paymentStatus   String          @default("PENDING") 
+  // PENDING, VERIFICATION_PENDING, PAID, REJECTED, REFUNDED
+  paymentMethod   String          @default("UPI_QR") // UPI_QR, CASH, CARD
+  subtotal        Float
+  taxPercentage   Float           @default(5.0)
+  taxAmount       Float           @default(0.0)
+  discountAmount  Float           @default(0.0)
+  grandTotal      Float
+  paymentProofUrl String?
+  paymentUtr      String?
+  paymentNotes    String?
+  customerNotes   String?
+  rejectionReason String?
+  verifiedByUserId String?
+  verifiedByUser  User?           @relation("OrderVerifiedBy", fields: [verifiedByUserId], references: [id])
+  verifiedAt      DateTime?
+  preparedAt      DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  items           OrderItem[]
+  payment         Payment?
+  invoice         Invoice?
+  customerVisits  CustomerVisit[]
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  foodItemId  String
+  foodItem    FoodItem @relation(fields: [foodItemId], references: [id])
+  foodName    String
+  price       Float
+  quantity    Int
+  total       Float
+  notes       String?
+  createdAt   DateTime @default(now())
+}
+
+model Payment {
+  id               String    @id @default(cuid())
+  orderId          String    @unique
+  order            Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount           Float
+  paymentMethod    String    @default("UPI_QR")
+  status           String    @default("PENDING") // PENDING, VERIFICATION_PENDING, COMPLETED, REJECTED
+  transactionRef   String?
+  proofImageUrl    String?
+  verifiedByUserId String?
+  verifiedByUser   User?     @relation("PaymentVerifiedBy", fields: [verifiedByUserId], references: [id])
+  verifiedAt       DateTime?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model Invoice {
+  id             String   @id @default(cuid())
+  invoiceNumber  String   @unique // e.g. "INV-20261115-001"
+  orderId        String   @unique
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerId     String
+  customerName   String
+  customerPhone  String
+  customerEmail  String?
+  tableNumber    String
+  subtotal       Float
+  taxRate        Float    @default(5.0)
+  taxAmount      Float    @default(0.0)
+  discountAmount Float    @default(0.0)
+  grandTotal     Float
+  paymentMethod  String
+  paymentStatus  String
+  printedCount   Int      @default(0)
+  createdAt      DateTime @default(now())
+}
+
+model CustomerVisit {
+  id         String          @id @default(cuid())
+  customerId String
+  customer   Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tableId    String
+  table      RestaurantTable @relation(fields: [tableId], references: [id])
+  orderId    String?
+  order      Order?          @relation(fields: [orderId], references: [id])
+  visitedAt  DateTime        @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // NEW_ORDER, PAYMENT_PROOF, ORDER_STATUS, ALERT
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  orderId   String?
+  createdAt DateTime @default(now())
+}
+
+model WebsiteContent {
+  id        String   @id @default(cuid())
+  section   String   // HERO, ABOUT, HIGHLIGHTS, CONTACT, TIMINGS, SOCIAL
+  key       String   @unique
+  value     String
+  label     String
+  updatedAt DateTime @updatedAt
+}
+
+model RestaurantSettings {
+  id                 String   @id @default("default")
+  restaurantName     String   @default("Zan Cafe")
+  tagline            String   @default("Artisanal Brews & Gourmet Cuisine in Melapalayam")
+  address            String   @default("36B/A14, ROAD, Naniyar Nagar, Melapalayam, Tirunelveli, Tamil Nadu 627005")
+  phone              String   @default("063693 13196")
+  email              String   @default("contact@zancafe.in")
+  upiId              String   @default("zancafe@upi")
+  upiQrImageUrl      String?
+  taxPercentage      Float    @default(5.0)
+  currencySymbol     String   @default("₹")
+  isOrderingEnabled  Boolean  @default(true)
+  openingHours       String   @default("Mon - Sun: 11:00 AM - 11:30 PM")
+  googleMapsEmbedUrl String   @default("https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3943.918809187381!2d77.7289569!3d8.6992631!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3b0413ec5ac275fb%3A0x9ad6e4c0f4e942bb!2sZan%20Cafe!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin")
+  updatedAt          DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+}
+
